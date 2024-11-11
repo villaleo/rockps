@@ -1,4 +1,5 @@
 import gleam/erlang
+import gleam/erlang/process
 import gleam/int
 import gleam/io
 import gleam/result
@@ -28,11 +29,8 @@ pub fn main() {
   io.println("The numbers 0, 1, and 2 may be used as well.")
   io.println("=====")
 
-  let player_1_move = read_move(player: 1)
-  let player_2_move = read_move(player: 2)
-
-  let assert Ok(player_1_move) = player_1_move
-  let assert Ok(player_2_move) = player_2_move
+  let assert Ok(player_1_move) = read_move(player: 1)
+  let assert Ok(player_2_move) = read_move(player: 2)
 
   io.println("")
 
@@ -47,25 +45,27 @@ pub fn read_move(player player: Int) -> Result(Move, GameError) {
   |> result.try(apply: parse_move_string)
 }
 
-pub fn play(player1_move: Move, player2_move: Move) -> GameState {
-  case player1_move, player2_move {
+pub fn play(player_1_move: Move, player_2_move: Move) -> GameState {
+  case player_1_move, player_2_move {
     // Cases where player 1 wins
     Rock, Scissors -> Player1Wins(Rock, Scissors)
     Paper, Rock -> Player1Wins(Paper, Rock)
     Scissors, Paper -> Player1Wins(Scissors, Paper)
     // Cases where player 2 wins
-    Scissors, Rock -> Player2Wins(Scissors, Rock)
-    Rock, Paper -> Player2Wins(Rock, Paper)
-    Paper, Scissors -> Player2Wins(Paper, Scissors)
+    Scissors, Rock -> Player2Wins(Rock, Scissors)
+    Rock, Paper -> Player2Wins(Paper, Rock)
+    Paper, Scissors -> Player2Wins(Scissors, Paper)
     // Case where no player wins
-    _, _ -> Draw(player1_move)
+    _, _ -> Draw(player_1_move)
   }
 }
 
 pub fn game_state_to_string(state: GameState) -> String {
   case state {
-    Player1Wins(move, beats) -> player_wins_message(move, beats, player: 1)
-    Player2Wins(move, beats) -> player_wins_message(move, beats, player: 2)
+    Player1Wins(move, beats) ->
+      player_wins_message(player: 1, winning_move: move, beats: beats)
+    Player2Wins(move, beats) ->
+      player_wins_message(player: 2, winning_move: move, beats: beats)
     Draw(move) ->
       "It's a draw! Both players played " <> move_to_string(move) <> "."
   }
@@ -73,8 +73,8 @@ pub fn game_state_to_string(state: GameState) -> String {
 
 pub fn move_to_string(move: Move) -> String {
   case move {
-    Paper -> "Paper"
     Rock -> "Rock"
+    Paper -> "Paper"
     Scissors -> "Scissors"
   }
 }

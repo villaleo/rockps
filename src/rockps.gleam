@@ -1,5 +1,4 @@
 import gleam/erlang
-import gleam/erlang/process
 import gleam/int
 import gleam/io
 import gleam/result
@@ -23,26 +22,33 @@ pub type Move {
 }
 
 pub fn main() {
-  io.println("Rock, Paper, Scissors!")
-  io.println("=====")
-  io.println("Type either \"rock\", \"paper\", or \"scissors\" to play.")
-  io.println("The numbers 0, 1, and 2 may be used as well.")
-  io.println("=====")
+  display_startup_message()
 
-  let assert Ok(player_1_move) = read_move(player: 1)
-  let assert Ok(player_2_move) = read_move(player: 2)
-
-  io.println("")
+  let player_1_move = read_move(player: 1)
+  let player_2_move = read_move(player: 2)
 
   play(player_1_move, player_2_move)
   |> game_state_to_string
   |> io.println
 }
 
-pub fn read_move(player player: Int) -> Result(Move, GameError) {
-  erlang.get_line("Player " <> int.to_string(player) <> "'s move: ")
-  |> result.map_error(with: fn(_) { ReadError })
-  |> result.try(apply: parse_move_string)
+pub fn read_move(player player: Int) -> Move {
+  let move_result =
+    erlang.get_line("* Player " <> int.to_string(player) <> "'s move: ")
+    |> result.map_error(with: fn(_) { ReadError })
+    |> result.try(apply: parse_move_string)
+
+  case move_result {
+    Ok(move) -> move
+    Error(error) -> {
+      error |> game_error_to_string |> io.println
+
+      case error {
+        BadMove -> read_move(player)
+        ReadError -> panic
+      }
+    }
+  }
 }
 
 pub fn play(player_1_move: Move, player_2_move: Move) -> GameState {
@@ -77,6 +83,21 @@ pub fn move_to_string(move: Move) -> String {
     Paper -> "Paper"
     Scissors -> "Scissors"
   }
+}
+
+pub fn game_error_to_string(error: GameError) -> String {
+  case error {
+    BadMove -> "Unknown move. Please try again."
+    ReadError -> "There was an issue reading your input. Aborted."
+  }
+}
+
+pub fn display_startup_message() {
+  io.println("Rock, Paper, Scissors!")
+  io.println("")
+  io.println("Type either \"rock\", \"paper\", or \"scissors\" to play.")
+  io.println("(tip: the numbers 0, 1, and 2 may be used as well.)")
+  io.println("")
 }
 
 fn player_wins_message(
